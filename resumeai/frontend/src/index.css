@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-zinc-950 text-zinc-100 font-sans antialiased;
+  }
+  * { box-sizing: border-box; }
+}
+
+@layer components {
+  .card {
+    @apply bg-zinc-900 border border-zinc-800 rounded-xl;
+  }
+  .btn-primary {
+    @apply bg-brand-500 hover:bg-brand-600 text-white font-medium px-4 py-2 rounded-lg transition-colors text-sm;
+  }
+  .btn-ghost {
+    @apply bg-transparent hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 border border-zinc-800 font-medium px-4 py-2 rounded-lg transition-colors text-sm;
+  }
+  .label {
+    @apply text-xs font-medium text-zinc-500 uppercase tracking-widest;
+  }
+  .badge-green {
+    @apply bg-brand-50 text-brand-600 text-xs font-medium px-2.5 py-0.5 rounded-full;
+  }
+  .badge-red {
+    @apply bg-red-950 text-red-400 text-xs font-medium px-2.5 py-0.5 rounded-full;
+  }
+  .badge-amber {
+    @apply bg-amber-950 text-amber-400 text-xs font-medium px-2.5 py-0.5 rounded-full;
+  }
+  .badge-zinc {
+    @apply bg-zinc-800 text-zinc-400 text-xs font-medium px-2.5 py-0.5 rounded-full;
+  }
+  .input {
+    @apply bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-brand-500 transition-colors w-full;
+  }
+}
