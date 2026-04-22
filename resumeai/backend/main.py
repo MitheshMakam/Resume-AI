@@ -20,6 +20,6 @@ app.include_router(resume.router, prefix="/api/resume", tags=["resume"])
 app.include_router(jobs.router, prefix="/api/jobs", tags=["jobs"])
 app.include_router(recruiter.router, prefix="/api/recruiter", tags=["recruiter"])
 
-@app.get("/health")
-def health():
-    return {"status": "ok"}
+@app.get("/test-cors")
+def test_cors():
+    return {"msg": "cors working"}
