@@ -1,7 +1,7 @@
+from fastapi.middleware.cors import CORSMidfrom fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI
-#from fastapi.middleware.cors import CORSMiddleware
-from routers import resume, jobs, recruiter
+
+from routers.resume import router as resume_router   # ✅ IMPORTANT
 
 app = FastAPI(title="ResumeAI API", version="1.0.0")
 
@@ -13,22 +13,15 @@ origins = [
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_origin_regex="https://.*vercel.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(resume.router, prefix="/api/resume")
-#app.include_router(jobs.router, prefix="/api/jobs", tags=["jobs"])
-#app.include_router(recruiter.router, prefix="/api/recruiter", tags=["recruiter"])
+# ✅ THIS MUST EXIST
+app.include_router(resume_router, prefix="/api/resume")
 
-@app.get("/test-cors")
-def test_cors():
-    return {"msg": "cors working"}
-
-@app.options("/{full_path:path}")
-async def preflight_handler():
-    return {"ok": True}
-
+@app.get("/")
+def root():
+    return {"status": "ok"}
 
