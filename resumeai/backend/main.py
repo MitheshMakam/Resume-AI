@@ -19,9 +19,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(resume.router, prefix="/api/resume", tags=["resume"])
-app.include_router(jobs.router, prefix="/api/jobs", tags=["jobs"])
-app.include_router(recruiter.router, prefix="/api/recruiter", tags=["recruiter"])
+#app.include_router(resume.router, prefix="/api/resume", tags=["resume"])
+#app.include_router(jobs.router, prefix="/api/jobs", tags=["jobs"])
+#app.include_router(recruiter.router, prefix="/api/recruiter", tags=["recruiter"])
 
 @app.get("/test-cors")
 def test_cors():
