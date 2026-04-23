@@ -4,10 +4,14 @@ from routers import resume, jobs, recruiter
 
 app = FastAPI(title="ResumeAI API", version="1.0.0")
 
+origins = [
+    "https://resumetrack.vercel.app",  # your frontend
+    "http://localhost:5173",           # local dev
+]
+
 
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # TEMP FIX
+    CORSMiddleware,  # TEMP FIX
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
