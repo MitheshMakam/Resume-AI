@@ -1,8 +1,7 @@
-from fastapi.middleware.cors import CORSMid
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers.resume import router as resume_router   # ✅ IMPORTANT
+from routers.resume import router as resume_router
 
 app = FastAPI(title="ResumeAI API", version="1.0.0")
 
@@ -19,10 +18,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ✅ THIS MUST EXIST
 app.include_router(resume_router, prefix="/api/resume")
 
 @app.get("/")
 def root():
     return {"status": "ok"}
-
