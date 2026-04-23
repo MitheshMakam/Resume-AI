@@ -17,34 +17,42 @@ class ResumeTextRequest(BaseModel):
 
 @router.post("/upload")
 async def upload_resume(file: UploadFile = File(...)):
-    if not file.filename.endswith((".pdf", ".docx")):
-        raise HTTPException(400, "Only PDF and DOCX files are supported.")
-    
-    content = await file.read()
-    
-    if file.filename.endswith(".pdf"):
-        text = extract_text_from_pdf(content)
-    else:
-        text = extract_text_from_docx(content)
-    
-    if not text.strip():
-        raise HTTPException(422, "Could not extract text from the resume. Try a different file.")
-    
-    parsed = parse_resume(text)
-    scores = score_ats(parsed)
-    suggestions = generate_suggestions(parsed, scores)
-    
-    # Job matching
-    jobs = get_all_jobs()
-    matched_jobs = match_jobs_to_resume(text, jobs)
-    
-    return {
-        "raw_text": text[:500],  # preview only
-        "parsed": parsed,
-        "ats_scores": scores,
-        "suggestions": suggestions,
-        "matched_jobs": matched_jobs[:10],
-    }
+    try:
+        print("📥 File received:", file.filename)
+
+        if not file.filename.endswith((".pdf", ".docx")):
+            raise HTTPException(400, "Only PDF and DOCX files are supported.")
+        
+        content = await file.read()
+        print("📦 File size:", len(content))
+
+        if file.filename.endswith(".pdf"):
+            print("📄 Processing PDF...")
+            text = extract_text_from_pdf(content)
+        else:
+            print("📄 Processing DOCX...")
+            text = extract_text_from_docx(content)
+
+        print("🧾 Extracted text length:", len(text))
+
+        if not text.strip():
+            raise HTTPException(422, "Could not extract text from resume")
+
+        parsed = parse_resume(text)
+        scores = score_ats(parsed)
+        suggestions = generate_suggestions(parsed, scores)
+
+        print("✅ Processing complete")
+
+        return {
+            "parsed": parsed,
+            "ats_scores": scores,
+            "suggestions": suggestions
+        }
+
+    except Exception as e:
+        print("🔥 ERROR:", str(e))   # 👈 THIS WILL SHOW IN RENDER LOGS
+        raise HTTPException(500, str(e))
 
 @router.post("/analyze-text")
 async def analyze_text(req: ResumeTextRequest):
