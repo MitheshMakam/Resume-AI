@@ -5,8 +5,7 @@ import numpy as np
 from typing import Optional
 import io
 
-# ✅ ONLY LOAD LIGHT MODEL
-#nlp = spacy.load("en_core_web_sm")
+
 
 SKILL_KEYWORDS = [
     "python","javascript","typescript","java","go","rust","c++","c#","ruby","php",
@@ -38,16 +37,10 @@ def extract_text_from_docx(file_bytes: bytes) -> str:
     return "\n".join([para.text for para in doc.paragraphs])
 
 def parse_resume(text: str) -> dict:
-    doc = nlp(text)
     lower = text.lower()
 
-    name = ""
-    for ent in doc.ents:
-        if ent.label_ == "PERSON":
-            name = ent.text
-            break
-    if not name:
-        name = text.split("\n")[0].strip()
+    # Fallback name (first line)
+    name = text.split("\n")[0].strip() if text else ""
 
     email_match = re.search(r"[\w.+-]+@[\w-]+\.[a-z]{2,}", text)
     email = email_match.group() if email_match else ""
