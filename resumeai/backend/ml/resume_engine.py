@@ -6,7 +6,7 @@ from typing import Optional
 import io
 
 # ✅ ONLY LOAD LIGHT MODEL
-nlp = spacy.load("en_core_web_sm")
+#nlp = spacy.load("en_core_web_sm")
 
 SKILL_KEYWORDS = [
     "python","javascript","typescript","java","go","rust","c++","c#","ruby","php",
