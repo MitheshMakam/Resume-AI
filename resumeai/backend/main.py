@@ -1,4 +1,5 @@
-from fastapi.middleware.cors import CORSMidfrom fastapi import FastAPI
+from fastapi.middleware.cors import CORSMid
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from routers.resume import router as resume_router   # ✅ IMPORTANT
