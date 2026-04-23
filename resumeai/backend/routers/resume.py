@@ -75,3 +75,8 @@ async def improve_resume(req: ResumeTextRequest):
         "estimated_improved_score": min(95, scores["overall"] + 18),
         "key_changes": [s["title"] for s in suggestions if s["type"] in ("critical", "warning")]
     }
+
+
+@router.post("/upload")
+async def upload_resume(file: UploadFile = File(...)):
+    return {"filename": file.filename}
