@@ -1,5 +1,4 @@
 import re
-import spacy
 import pdfplumber
 from docx import Document
 import numpy as np
