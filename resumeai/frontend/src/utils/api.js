@@ -4,7 +4,6 @@ const api = axios.create({
   baseURL: "https://resume-backend-1lqo.onrender.com/api",
 });
 
-// ✅ FINAL VERSION
 export const uploadResume = async (file) => {
   const form = new FormData();
   form.append("file", file);
@@ -15,5 +14,9 @@ export const uploadResume = async (file) => {
     },
   });
 };
+
+export const getJobs = (params) => api.get("/jobs/", { params }); // ✅ FIXED
+export const searchJobs = (q) => api.get("/jobs/search", { params: { q } });
+export const getDashboard = () => api.get("/recruiter/dashboard");
 
 export default api;
