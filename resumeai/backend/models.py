@@ -9,5 +9,4 @@ class Candidate(Base):
     email = Column(String)
     job_id = Column(String)
     ats_score = Column(Integer)
-    match_score = Column(Integer))
-    gap_skills = Column(JSON)
+    match_score = Column(Integer)
