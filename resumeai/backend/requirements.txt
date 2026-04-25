@@ -6,3 +6,5 @@ python-docx==1.1.2
 numpy==1.26.4
 pydantic==1.10.13
 typer==0.7.0
+sqlalchemy==2.0.30
+psycopg2-binary==2.9.9

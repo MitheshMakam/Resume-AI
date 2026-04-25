@@ -1,9 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from db import Base, engine
 
 from routers.resume import router as resume_router
 from routers.jobs import router as jobs_router
 from routers.recruiter import router as recruiter_router
+
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="ResumeAI API", version="1.0.0")
 
