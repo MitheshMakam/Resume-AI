@@ -6,11 +6,11 @@ ResumeAI is a full-stack web application that helps users **analyze resumes, imp
 
 ## 🌐 Live Demo
 
+🔗 Website:
+https://resumetrack.vercel.app
+
 🔗 Backend API:
 https://resume-backend-1lqo.onrender.com
-
-🔗 Frontend (if deployed):
-https://sigma-vercel.app
 
 ---
 
