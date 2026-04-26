@@ -1,26 +1,39 @@
 import requests
+import os
 
-def get_all_jobs():
-    url = "https://remotive.com/api/remote-jobs"
+APP_ID = os.getenv("ADZUNA_APP_ID")
+APP_KEY = os.getenv("ADZUNA_APP_KEY")
 
-    try:
-        res = requests.get(url)
-        data = res.json()
+BASE_URL = "https://api.adzuna.com/v1/api/jobs"
 
-        jobs = []
-        for job in data["jobs"][:20]:
-            jobs.append({
-                "id": job["id"],
-                "title": job["title"],
-                "company": job["company_name"],
-                "location": job["candidate_required_location"],
-                "description": job["description"],
-                "url": job["url"],
-                "match_score": 0  # we calculate later
-            })
+def get_all_jobs(role="developer", location="india"):
+    url = f"{BASE_URL}/in/search/1"
 
-        return jobs
+    params = {
+        "app_id": APP_ID,
+        "app_key": APP_KEY,
+        "what": role,
+        "where": location,
+        "results_per_page": 20,
+    }
 
-    except Exception as e:
-        print("Job API failed:", e)
-        return []
+    res = requests.get(url, params=params)
+    data = res.json()
+
+    jobs = []
+
+    for job in data.get("results", []):
+        jobs.append({
+            "id": job.get("id"),
+            "title": job.get("title"),
+            "company": job.get("company", {}).get("display_name"),
+            "location": job.get("location", {}).get("display_name"),
+            "description": job.get("description"),
+            "url": job.get("redirect_url"),
+        })
+
+    return jobs
+
+
+def search_jobs(query: str):
+    return get_all_jobs(role=query)
