@@ -30,13 +30,12 @@ def submit_candidate(data: CandidateSubmit):
     target_match = next((j for j in matched if j["id"] == data.job_id), None)
 
     candidate = Candidate(
-    id=f"c_{uuid.uuid4()}",
     name=data.name,
     email=data.email,
     job_id=data.job_id,
     ats_score=scores["overall"],
     match_score=target_match["match_score"] if target_match else 0,
-    )
+)
 
     db.add(candidate)
     db.commit()

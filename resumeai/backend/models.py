@@ -4,7 +4,7 @@ from db import Base
 class Candidate(Base):
     __tablename__ = "candidates"
 
-    id = Column(String, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)  # ✅ FIX
     name = Column(String)
     email = Column(String)
     job_id = Column(String)
