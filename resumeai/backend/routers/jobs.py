@@ -1,44 +1,26 @@
 from fastapi import APIRouter, Query
 from typing import Optional
-from utils.job_store import get_all_jobs # ✅ REQUIRED
+from utils.job_store import get_all_jobs
 
 router = APIRouter()
 
 @router.get("/")
 def list_jobs(
-    role: Optional[str] = Query(None),
-    location: Optional[str] = Query(None),
-    min_match: Optional[float] = Query(None),
-    limit: int = Query(20),
+    role: Optional[str] = Query("developer"),
+    location: Optional[str] = Query("india"),
 ):
-    jobs = get_all_jobs()
-
-    if role:
-        jobs = [
-            j for j in jobs
-            if role.lower() in j["title"].lower()
-            or role.lower() in j.get("type", "").lower()
-        ]
-
-    if location and location != "all":
-        jobs = [j for j in jobs if location.lower() in j["location"].lower()]
-
-    if min_match is not None:
-        jobs = [j for j in jobs if j.get("match_score", 100) >= min_match]
-
-    return jobs[:limit]
+    return get_all_jobs(role, location)
 
 
 @router.get("/search")
 def search(q: str = Query(...)):
-    jobs = get_all_jobs()
-    return [j for j in jobs if q.lower() in j["title"].lower()]
+    return get_all_jobs(q)
 
 
 @router.get("/{job_id}")
 def get_job(job_id: str):
     jobs = get_all_jobs()
     for job in jobs:
-        if job["id"] == job_id:
+        if str(job["id"]) == job_id:
             return job
     return {"error": "Job not found"}
