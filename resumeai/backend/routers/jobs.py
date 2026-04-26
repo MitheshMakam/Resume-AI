@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Query
 from typing import Optional
-from utils.job_store import get_all_jobs, search_jobs  # ✅ REQUIRED
+from utils.job_store import get_all_jobs # ✅ REQUIRED
 
 router = APIRouter()
 
@@ -31,7 +31,8 @@ def list_jobs(
 
 @router.get("/search")
 def search(q: str = Query(...)):
-    return search_jobs(q)
+    jobs = get_all_jobs()
+    return [j for j in jobs if q.lower() in j["title"].lower()]
 
 
 @router.get("/{job_id}")
