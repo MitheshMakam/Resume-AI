@@ -177,3 +177,4 @@ export default function JobsPage() {
     </div>
   )
 }
+console.log("API RESPONSE:", res.data)

@@ -39,14 +39,11 @@ export default function AnalyzerPage() {
   const [error, setError] = useState('')
   const navigate = useNavigate()
 
-  // ✅ Load from localStorage safely
   useEffect(() => {
     const saved = localStorage.getItem('resume_result')
     if (saved) {
       const parsed = JSON.parse(saved)
-      parsed.matched_jobs = Array.isArray(parsed.matched_jobs)
-        ? parsed.matched_jobs
-        : []
+      parsed.matched_jobs = Array.isArray(parsed.matched_jobs) ? parsed.matched_jobs : []
       setResult(parsed)
     }
   }, [])
@@ -63,11 +60,9 @@ export default function AnalyzerPage() {
 
       const jobsRes = await getJobs({
         role: skills,
-        location: 'india',
-        limit: 20
+        location: 'india'
       })
 
-      // ✅ ALWAYS FORCE ARRAY
       const safeJobs = Array.isArray(jobsRes.data)
         ? jobsRes.data
         : Array.isArray(jobsRes.data?.jobs)
@@ -85,7 +80,6 @@ export default function AnalyzerPage() {
     } catch (e) {
       console.error(e)
       setError('Failed to analyze resume.')
-      setResult(null)
     } finally {
       setLoading(false)
     }
@@ -94,11 +88,12 @@ export default function AnalyzerPage() {
   const r = result
   const scores = r?.ats_scores || {}
   const parsed = r?.parsed || {}
-
   const skillGaps = getSkillGaps(parsed.skills, r?.matched_jobs)
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
+
+      {/* HEADER */}
       <div className="mb-8">
         <h1 className="text-2xl font-semibold text-white mb-1">
           Resume Analyzer
@@ -110,22 +105,26 @@ export default function AnalyzerPage() {
 
       <div className="grid lg:grid-cols-[320px_1fr] gap-6">
 
-        {/* Sidebar */}
+        {/* SIDEBAR */}
         <div className="flex flex-col gap-5">
+
           <UploadZone onFile={handleFile} loading={loading} fileName={file?.name} />
 
           {error && (
-            <div className="text-red-400 text-sm">{error}</div>
+            <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm p-3 rounded-lg">
+              {error}
+            </div>
           )}
 
           {loading && (
-            <div className="text-zinc-400 text-sm">Analyzing...</div>
+            <div className="text-zinc-400 text-sm">Analyzing resume...</div>
           )}
 
           {r && (
             <>
+              {/* ATS CARD */}
               <div className="card p-5">
-                <div className="mb-4 text-zinc-400">ATS Score</div>
+                <div className="label mb-4">ATS Score</div>
 
                 <div className="flex justify-center mb-3">
                   <AtsRing score={scores.overall || 0} size={120} />
@@ -140,8 +139,9 @@ export default function AnalyzerPage() {
                 </div>
               </div>
 
+              {/* SKILLS */}
               <div className="card p-5">
-                <div className="mb-2 text-zinc-400">Skills</div>
+                <div className="label mb-3">Detected Skills</div>
                 <div className="flex flex-wrap gap-1.5">
                   {(parsed.skills || []).map(s => (
                     <span key={s} className="badge-green">{s}</span>
@@ -149,12 +149,13 @@ export default function AnalyzerPage() {
                 </div>
               </div>
 
+              {/* JOB BUTTON */}
               {(r.matched_jobs || []).length > 0 && (
                 <button
-                  className="btn-primary flex justify-between items-center px-4 py-3"
+                  className="btn-primary flex items-center justify-between px-4 py-3"
                   onClick={() => navigate('/jobs')}
                 >
-                  <span>View {r.matched_jobs.length} jobs</span>
+                  <span>View {r.matched_jobs.length} job matches</span>
                   <ChevronRight size={16} />
                 </button>
               )}
@@ -162,50 +163,67 @@ export default function AnalyzerPage() {
           )}
         </div>
 
-        {/* Main */}
-        <div className="card p-6">
+        {/* MAIN PANEL */}
+        <div className="card overflow-hidden">
+
           {!r ? (
-            <div className="text-center text-zinc-400">
-              Upload resume to start
+            <div className="flex flex-col items-center justify-center h-80 text-center px-8">
+              <Briefcase size={40} className="text-zinc-700 mb-4" />
+              <p className="text-zinc-400 font-medium mb-1">
+                Upload your resume to get started
+              </p>
+              <p className="text-zinc-600 text-sm">
+                We’ll analyze it and match jobs instantly.
+              </p>
             </div>
           ) : (
             <>
-              <div className="flex gap-4 mb-4">
+              {/* TABS */}
+              <div className="flex border-b border-zinc-800">
                 {TABS.map((t, i) => (
                   <button
                     key={t}
                     onClick={() => setTab(i)}
-                    className={tab === i ? 'text-white' : 'text-zinc-500'}
+                    className={`px-5 py-3 text-sm font-medium border-b-2 -mb-px ${
+                      tab === i
+                        ? 'border-brand-500 text-brand-500'
+                        : 'border-transparent text-zinc-500 hover:text-zinc-300'
+                    }`}
                   >
                     {t}
                   </button>
                 ))}
               </div>
 
-              {tab === 0 && (
-                <div className="flex flex-col gap-3">
-                  {(r.suggestions || []).map((s, i) => (
-                    <SuggestionCard key={i} {...s} />
-                  ))}
-                </div>
-              )}
+              <div className="p-6">
 
-              {tab === 1 && (
-                <div>
-                  <div className="text-white">{parsed.name}</div>
-                  <div className="text-zinc-400 text-sm">{parsed.email}</div>
-                </div>
-              )}
+                {tab === 0 && (
+                  <div className="flex flex-col gap-3">
+                    {(r.suggestions || []).map((s, i) => (
+                      <SuggestionCard key={i} {...s} />
+                    ))}
+                  </div>
+                )}
 
-              {tab === 2 && (
-                <div className="flex flex-col gap-2">
-                  {skillGaps.map(s => (
-                    <div key={s.skill}>
-                      {s.skill} - {s.pct}%
-                    </div>
-                  ))}
-                </div>
-              )}
+                {tab === 1 && (
+                  <div>
+                    <div className="text-white font-medium">{parsed.name}</div>
+                    <div className="text-zinc-400 text-sm">{parsed.email}</div>
+                  </div>
+                )}
+
+                {tab === 2 && (
+                  <div className="flex flex-col gap-3">
+                    {skillGaps.map(s => (
+                      <div key={s.skill} className="flex justify-between text-sm">
+                        <span>{s.skill}</span>
+                        <span className="text-zinc-400">{s.pct}%</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+              </div>
             </>
           )}
         </div>
