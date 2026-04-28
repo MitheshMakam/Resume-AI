@@ -13,7 +13,6 @@ export default function JobsPage() {
   useEffect(() => {
     async function fetchJobs() {
       try {
-        // 🔥 get resume text from localStorage
         const resumeText = localStorage.getItem('resume_text') || ''
 
         const res = await getJobs({
@@ -22,7 +21,8 @@ export default function JobsPage() {
           resume: resumeText
         })
 
-        // ✅ SAFE PARSE (no more filter/forEach errors)
+        console.log("JOBS API:", res.data) // ✅ debug
+
         const data = res?.data
 
         const safeJobs = Array.isArray(data)
@@ -48,17 +48,18 @@ export default function JobsPage() {
 
   const safeJobs = Array.isArray(jobs) ? jobs : []
 
+  // ✅ FIXED FILTER
   const filtered = safeJobs
     .filter(j =>
       !search ||
       j.title?.toLowerCase().includes(search.toLowerCase()) ||
       j.company?.toLowerCase().includes(search.toLowerCase())
     )
-    .filter(j => (j.match_score || 0) >= minMatch)
+    .filter(j => (j.match_score ?? 50) >= minMatch)
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
-      
+
       <h1 className="text-2xl font-semibold text-white mb-4">Job Matches</h1>
 
       {/* Filters */}
@@ -88,16 +89,14 @@ export default function JobsPage() {
         </div>
       </div>
 
-      {/* Loading */}
       {loading && (
         <div className="text-zinc-400 text-sm">Loading jobs...</div>
       )}
 
-      {/* Main */}
       {!loading && (
         <div className="grid lg:grid-cols-[320px_1fr] gap-6">
 
-          {/* LEFT LIST */}
+          {/* LEFT */}
           <div className="flex flex-col gap-3 max-h-[calc(100vh-200px)] overflow-y-auto pr-1">
             {filtered.map(job => (
               <JobCard
@@ -115,7 +114,7 @@ export default function JobsPage() {
             )}
           </div>
 
-          {/* RIGHT DETAIL */}
+          {/* RIGHT */}
           {selected && (
             <div className="card p-6 sticky top-20 h-fit">
 
@@ -130,7 +129,7 @@ export default function JobsPage() {
                 </div>
 
                 <span className="badge-green">
-                  {Math.round(selected.match_score || 0)}%
+                  {Math.round(selected.match_score ?? 50)}%
                 </span>
               </div>
 
@@ -138,7 +137,6 @@ export default function JobsPage() {
                 {selected.description}
               </p>
 
-              {/* Skills */}
               <div className="mb-5">
                 <div className="label mb-2">Matched Skills</div>
                 <div className="flex flex-wrap gap-1.5">
@@ -157,7 +155,6 @@ export default function JobsPage() {
                 </div>
               </div>
 
-              {/* Actions */}
               <div className="flex gap-3">
                 <a
                   href={selected.url}
