@@ -21,10 +21,12 @@ export default function JobsPage() {
           resume: resumeText
         })
 
-        console.log("JOBS API:", res.data) // ✅ debug
+        // ✅ DEBUG (inside scope)
+        console.log("API RESPONSE:", res.data)
 
         const data = res?.data
 
+        // ✅ ALWAYS SAFE ARRAY
         const safeJobs = Array.isArray(data)
           ? data
           : Array.isArray(data?.jobs)
@@ -48,21 +50,23 @@ export default function JobsPage() {
 
   const safeJobs = Array.isArray(jobs) ? jobs : []
 
-  // ✅ FIXED FILTER
+  // ✅ FILTER (THIS is your .filter location)
   const filtered = safeJobs
     .filter(j =>
       !search ||
       j.title?.toLowerCase().includes(search.toLowerCase()) ||
       j.company?.toLowerCase().includes(search.toLowerCase())
     )
-    .filter(j => (j.match_score ?? 50) >= minMatch)
+    .filter(j => (j.match_score || 0) >= minMatch)
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
 
-      <h1 className="text-2xl font-semibold text-white mb-4">Job Matches</h1>
+      <h1 className="text-2xl font-semibold text-white mb-4">
+        Job Matches
+      </h1>
 
-      {/* Filters */}
+      {/* FILTER BAR */}
       <div className="flex items-center gap-3 mb-6">
         <div className="relative flex-1">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
@@ -89,14 +93,16 @@ export default function JobsPage() {
         </div>
       </div>
 
+      {/* LOADING */}
       {loading && (
         <div className="text-zinc-400 text-sm">Loading jobs...</div>
       )}
 
+      {/* MAIN */}
       {!loading && (
         <div className="grid lg:grid-cols-[320px_1fr] gap-6">
 
-          {/* LEFT */}
+          {/* LEFT LIST */}
           <div className="flex flex-col gap-3 max-h-[calc(100vh-200px)] overflow-y-auto pr-1">
             {filtered.map(job => (
               <JobCard
@@ -114,7 +120,7 @@ export default function JobsPage() {
             )}
           </div>
 
-          {/* RIGHT */}
+          {/* RIGHT DETAIL */}
           {selected && (
             <div className="card p-6 sticky top-20 h-fit">
 
@@ -129,7 +135,7 @@ export default function JobsPage() {
                 </div>
 
                 <span className="badge-green">
-                  {Math.round(selected.match_score ?? 50)}%
+                  {Math.round(selected.match_score || 0)}%
                 </span>
               </div>
 
@@ -137,6 +143,7 @@ export default function JobsPage() {
                 {selected.description}
               </p>
 
+              {/* MATCHED */}
               <div className="mb-5">
                 <div className="label mb-2">Matched Skills</div>
                 <div className="flex flex-wrap gap-1.5">
@@ -146,6 +153,7 @@ export default function JobsPage() {
                 </div>
               </div>
 
+              {/* MISSING */}
               <div className="mb-5">
                 <div className="label mb-2">Missing Skills</div>
                 <div className="flex flex-wrap gap-1.5">
@@ -155,6 +163,7 @@ export default function JobsPage() {
                 </div>
               </div>
 
+              {/* ACTIONS */}
               <div className="flex gap-3">
                 <a
                   href={selected.url}
@@ -177,4 +186,3 @@ export default function JobsPage() {
     </div>
   )
 }
-console.log("API RESPONSE:", res.data)
