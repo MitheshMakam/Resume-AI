@@ -15,7 +15,8 @@ export const uploadResume = async (file) => {
   });
 };
 
-export const getJobs = (params) => api.get("/jobs/", { params }); // ✅ FIXED
+export const getJobs = (params) =>
+  axios.get('/api/jobs/', { params })
 export const searchJobs = (q) => api.get("/jobs/search", { params: { q } });
 export const getDashboard = () => api.get("/recruiter/dashboard");
 
