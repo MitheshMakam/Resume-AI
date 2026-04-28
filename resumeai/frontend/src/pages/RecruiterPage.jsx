@@ -9,10 +9,13 @@ import { uploadResume, getJobs } from '../utils/api'
 
 const TABS = ['Suggestions', 'Parsed Info', 'Skill Gaps']
 
+// ✅ SAFE FUNCTION
 function getSkillGaps(resumeSkills = [], jobs = []) {
+  const safeJobs = Array.isArray(jobs) ? jobs : []
+
   const freq = {}
 
-  jobs.forEach(job => {
+  safeJobs.forEach(job => {
     const text = job.description?.toLowerCase() || ''
     const keywords = ['react','node','aws','docker','kubernetes','sql','python']
 
@@ -26,7 +29,7 @@ function getSkillGaps(resumeSkills = [], jobs = []) {
   return Object.entries(freq).map(([skill, count]) => ({
     skill,
     pct: Math.min(100, count * 10),
-    type: resumeSkills.includes(skill) ? 'have' : 'missing'
+    type: resumeSkills?.includes(skill) ? 'have' : 'missing'
   }))
 }
 
@@ -38,10 +41,18 @@ export default function AnalyzerPage() {
   const [error, setError] = useState('')
   const navigate = useNavigate()
 
-  // ✅ persist data
+  // ✅ SAFE LOAD
   useEffect(() => {
     const saved = localStorage.getItem('resume_result')
-    if (saved) setResult(JSON.parse(saved))
+    if (saved) {
+      const parsed = JSON.parse(saved)
+
+      parsed.matched_jobs = Array.isArray(parsed.matched_jobs)
+        ? parsed.matched_jobs
+        : []
+
+      setResult(parsed)
+    }
   }, [])
 
   async function handleFile(f) {
@@ -52,7 +63,6 @@ export default function AnalyzerPage() {
     try {
       const { data } = await uploadResume(f)
 
-      // 🔥 fetch jobs based on skills
       const skills = data?.parsed?.skills?.join(' ') || 'developer'
 
       const jobsRes = await getJobs({
@@ -61,9 +71,16 @@ export default function AnalyzerPage() {
         limit: 20
       })
 
+      // ✅ FIX HERE
+      const safeJobs = Array.isArray(jobsRes.data)
+        ? jobsRes.data
+        : Array.isArray(jobsRes.data?.jobs)
+        ? jobsRes.data.jobs
+        : []
+
       const finalData = {
         ...data,
-        matched_jobs: jobsRes.data
+        matched_jobs: safeJobs
       }
 
       setResult(finalData)
@@ -81,153 +98,37 @@ export default function AnalyzerPage() {
   const r = result
   const scores = r?.ats_scores || {}
   const parsed = r?.parsed || {}
-  const skillGaps = getSkillGaps(parsed.skills, r?.matched_jobs || [])
+
+  // ✅ SAFE CALL
+  const skillGaps = getSkillGaps(parsed.skills, r?.matched_jobs)
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-white mb-1">Resume Analyzer</h1>
-        <p className="text-zinc-500 text-sm">Upload your resume to get ATS score, insights, and job matches.</p>
-      </div>
+      <h1 className="text-2xl text-white mb-4">Resume Analyzer</h1>
 
-      <div className="grid lg:grid-cols-[320px_1fr] gap-6">
-        
-        {/* Sidebar */}
-        <div className="flex flex-col gap-5">
-          <UploadZone onFile={handleFile} loading={loading} fileName={file?.name} />
+      <UploadZone onFile={handleFile} loading={loading} />
 
-          {error && (
-            <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm p-3 rounded-lg">
-              {error}
+      {error && <div className="text-red-400">{error}</div>}
+
+      {r && (
+        <>
+          <AtsRing score={scores.overall || 0} />
+
+          {(r.matched_jobs || []).length > 0 && (
+            <button onClick={() => navigate('/jobs')}>
+              View Jobs ({r.matched_jobs.length})
+            </button>
+          )}
+
+          {tab === 2 && (
+            <div>
+              {skillGaps.map(s => (
+                <div key={s.skill}>{s.skill} - {s.pct}%</div>
+              ))}
             </div>
           )}
-
-          {loading && (
-            <div className="text-zinc-400 text-sm">Analyzing resume...</div>
-          )}
-
-          {r && (
-            <>
-              <div className="card p-5">
-                <div className="label mb-4">ATS Score</div>
-
-                <div className="flex justify-center mb-3">
-                  <AtsRing score={scores.overall || 0} size={120} />
-                </div>
-
-                {/* 🔥 ATS Label */}
-                <div className="text-center text-sm text-zinc-400 mb-4">
-                  {scores.overall >= 70 ? 'Strong Resume' :
-                   scores.overall >= 40 ? 'Average Resume' :
-                   'Needs Improvement'}
-                </div>
-
-                <div className="flex flex-col gap-3">
-                  <ScoreBar label="Keywords" value={scores.keywords || 0} />
-                  <ScoreBar label="Format" value={scores.format || 0} />
-                  <ScoreBar label="Skills Match" value={scores.skills_match || 0} />
-                  <ScoreBar label="Readability" value={scores.readability || 0} />
-                  <ScoreBar label="Completeness" value={scores.completeness || 0} />
-                </div>
-              </div>
-
-              <div className="card p-5">
-                <div className="label mb-3">Detected Skills</div>
-                <div className="flex flex-wrap gap-1.5">
-                  {(parsed.skills || []).map(s => (
-                    <span key={s} className="badge-green">{s}</span>
-                  ))}
-                </div>
-              </div>
-
-              {r.matched_jobs?.length > 0 && (
-                <button
-                  className="btn-primary flex items-center justify-between px-4 py-3"
-                  onClick={() => navigate('/jobs')}
-                >
-                  <span>View {r.matched_jobs.length} job matches</span>
-                  <ChevronRight size={16} />
-                </button>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* Main Panel */}
-        <div className="card overflow-hidden">
-          {!r ? (
-            <div className="flex flex-col items-center justify-center h-80 text-center px-8">
-              <Briefcase size={40} className="text-zinc-700 mb-4" />
-              <p className="text-zinc-400 font-medium mb-1">Upload your resume to get started</p>
-              <p className="text-zinc-600 text-sm">We’ll analyze it and match jobs instantly.</p>
-            </div>
-          ) : (
-            <>
-              <div className="flex border-b border-zinc-800">
-                {TABS.map((t, i) => (
-                  <button
-                    key={t}
-                    onClick={() => setTab(i)}
-                    className={`px-5 py-3 text-sm font-medium border-b-2 -mb-px ${
-                      tab === i
-                        ? 'border-brand-500 text-brand-500'
-                        : 'border-transparent text-zinc-500 hover:text-zinc-300'
-                    }`}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
-
-              <div className="p-6">
-                
-                {/* Suggestions */}
-                {tab === 0 && (
-                  <div className="flex flex-col gap-3">
-                    {(r.suggestions || []).map((s, i) => (
-                      <SuggestionCard key={i} {...s} />
-                    ))}
-                  </div>
-                )}
-
-                {/* Parsed Info */}
-                {tab === 1 && (
-                  <div className="flex flex-col gap-6">
-                    <div>
-                      <div className="label mb-2">Contact</div>
-                      <div className="font-medium text-white">{parsed.name}</div>
-                      <div className="text-sm text-zinc-400">{parsed.email}</div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Skill Gaps */}
-                {tab === 2 && (
-                  <div className="flex flex-col gap-3">
-                    {skillGaps.map(({ skill, pct, type }) => (
-                      <div key={skill} className="flex items-center gap-3">
-                        <span className="text-sm text-zinc-300 w-28">{skill}</span>
-                        <div className="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full ${
-                              type === 'missing'
-                                ? 'bg-red-500'
-                                : 'bg-brand-500'
-                            }`}
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-zinc-400">{pct}%</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-              </div>
-            </>
-          )}
-        </div>
-      </div>
+        </>
+      )}
     </div>
   )
 }
