@@ -1,182 +1,216 @@
 import { useState, useEffect } from 'react'
-import { Search, SlidersHorizontal, ExternalLink, BookOpen } from 'lucide-react'
-import JobCard from '../components/JobCard'
-import { getJobs } from '../utils/api'
+import { useNavigate } from 'react-router-dom'
+import { Briefcase, ChevronRight } from 'lucide-react'
+import UploadZone from '../components/UploadZone'
+import AtsRing from '../components/AtsRing'
+import ScoreBar from '../components/ScoreBar'
+import SuggestionCard from '../components/SuggestionCard'
+import { uploadResume, getJobs } from '../utils/api'
 
-export default function JobsPage() {
-  const [jobs, setJobs] = useState([])
-  const [selected, setSelected] = useState(null)
-  const [search, setSearch] = useState('')
-  const [minMatch, setMinMatch] = useState(0)
-  const [loading, setLoading] = useState(true)
+const TABS = ['Suggestions', 'Parsed Info', 'Skill Gaps']
 
-  useEffect(() => {
-    async function fetchJobs() {
-      try {
-        // 🔥 get resume text from localStorage
-        const resumeText = localStorage.getItem('resume_text') || ''
+function getSkillGaps(resumeSkills = [], jobs = []) {
+  const safeJobs = Array.isArray(jobs) ? jobs : []
+  const freq = {}
 
-        const res = await getJobs({
-          role: 'developer',
-          location: 'india',
-          resume: resumeText
-        })
+  safeJobs.forEach(job => {
+    const text = job.description?.toLowerCase() || ''
+    const keywords = ['react','node','aws','docker','kubernetes','sql','python']
 
-        // ✅ SAFE PARSE (no more filter/forEach errors)
-        const data = res?.data
-
-        const safeJobs = Array.isArray(data)
-          ? data
-          : Array.isArray(data?.jobs)
-          ? data.jobs
-          : []
-
-        setJobs(safeJobs)
-        setSelected(safeJobs[0] || null)
-
-      } catch (err) {
-        console.error("Jobs fetch error:", err)
-        setJobs([])
-        setSelected(null)
-      } finally {
-        setLoading(false)
+    keywords.forEach(k => {
+      if (text.includes(k)) {
+        freq[k] = (freq[k] || 0) + 1
       }
-    }
+    })
+  })
 
-    fetchJobs()
+  return Object.entries(freq).map(([skill, count]) => ({
+    skill,
+    pct: Math.min(100, count * 10),
+    type: resumeSkills?.includes(skill) ? 'have' : 'missing'
+  }))
+}
+
+export default function AnalyzerPage() {
+  const [file, setFile] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState(null)
+  const [tab, setTab] = useState(0)
+  const [error, setError] = useState('')
+  const navigate = useNavigate()
+
+  // ✅ Load from localStorage safely
+  useEffect(() => {
+    const saved = localStorage.getItem('resume_result')
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      parsed.matched_jobs = Array.isArray(parsed.matched_jobs)
+        ? parsed.matched_jobs
+        : []
+      setResult(parsed)
+    }
   }, [])
 
-  const safeJobs = Array.isArray(jobs) ? jobs : []
+  async function handleFile(f) {
+    setFile(f)
+    setLoading(true)
+    setError('')
 
-  const filtered = safeJobs
-    .filter(j =>
-      !search ||
-      j.title?.toLowerCase().includes(search.toLowerCase()) ||
-      j.company?.toLowerCase().includes(search.toLowerCase())
-    )
-    .filter(j => (j.match_score || 0) >= minMatch)
+    try {
+      const { data } = await uploadResume(f)
+
+      const skills = data?.parsed?.skills?.join(' ') || 'developer'
+
+      const jobsRes = await getJobs({
+        role: skills,
+        location: 'india',
+        limit: 20
+      })
+
+      // ✅ ALWAYS FORCE ARRAY
+      const safeJobs = Array.isArray(jobsRes.data)
+        ? jobsRes.data
+        : Array.isArray(jobsRes.data?.jobs)
+        ? jobsRes.data.jobs
+        : []
+
+      const finalData = {
+        ...data,
+        matched_jobs: safeJobs
+      }
+
+      setResult(finalData)
+      localStorage.setItem('resume_result', JSON.stringify(finalData))
+
+    } catch (e) {
+      console.error(e)
+      setError('Failed to analyze resume.')
+      setResult(null)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const r = result
+  const scores = r?.ats_scores || {}
+  const parsed = r?.parsed || {}
+
+  const skillGaps = getSkillGaps(parsed.skills, r?.matched_jobs)
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
-      
-      <h1 className="text-2xl font-semibold text-white mb-4">Job Matches</h1>
-
-      {/* Filters */}
-      <div className="flex items-center gap-3 mb-6">
-        <div className="relative flex-1">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-          <input
-            className="input pl-9"
-            placeholder="Search jobs or companies…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <SlidersHorizontal size={14} className="text-zinc-500" />
-          <span className="text-xs text-zinc-500">Min match:</span>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            step="5"
-            value={minMatch}
-            onChange={e => setMinMatch(+e.target.value)}
-          />
-          <span className="text-xs text-zinc-400 w-8">{minMatch}%</span>
-        </div>
+      <div className="mb-8">
+        <h1 className="text-2xl font-semibold text-white mb-1">
+          Resume Analyzer
+        </h1>
+        <p className="text-zinc-500 text-sm">
+          Upload your resume to get ATS score and job matches
+        </p>
       </div>
 
-      {/* Loading */}
-      {loading && (
-        <div className="text-zinc-400 text-sm">Loading jobs...</div>
-      )}
+      <div className="grid lg:grid-cols-[320px_1fr] gap-6">
 
-      {/* Main */}
-      {!loading && (
-        <div className="grid lg:grid-cols-[320px_1fr] gap-6">
+        {/* Sidebar */}
+        <div className="flex flex-col gap-5">
+          <UploadZone onFile={handleFile} loading={loading} fileName={file?.name} />
 
-          {/* LEFT LIST */}
-          <div className="flex flex-col gap-3 max-h-[calc(100vh-200px)] overflow-y-auto pr-1">
-            {filtered.map(job => (
-              <JobCard
-                key={job.id}
-                job={job}
-                selected={selected?.id === job.id}
-                onClick={() => setSelected(job)}
-              />
-            ))}
+          {error && (
+            <div className="text-red-400 text-sm">{error}</div>
+          )}
 
-            {filtered.length === 0 && (
-              <div className="text-center text-zinc-500 py-10 text-sm">
-                No jobs match your filters.
-              </div>
-            )}
-          </div>
+          {loading && (
+            <div className="text-zinc-400 text-sm">Analyzing...</div>
+          )}
 
-          {/* RIGHT DETAIL */}
-          {selected && (
-            <div className="card p-6 sticky top-20 h-fit">
+          {r && (
+            <>
+              <div className="card p-5">
+                <div className="mb-4 text-zinc-400">ATS Score</div>
 
-              <div className="flex justify-between mb-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-white">
-                    {selected.title}
-                  </h2>
-                  <p className="text-sm text-zinc-400">
-                    {selected.company} · {selected.location}
-                  </p>
+                <div className="flex justify-center mb-3">
+                  <AtsRing score={scores.overall || 0} size={120} />
                 </div>
 
-                <span className="badge-green">
-                  {Math.round(selected.match_score || 0)}%
-                </span>
+                <div className="flex flex-col gap-3">
+                  <ScoreBar label="Keywords" value={scores.keywords || 0} />
+                  <ScoreBar label="Format" value={scores.format || 0} />
+                  <ScoreBar label="Skills Match" value={scores.skills_match || 0} />
+                  <ScoreBar label="Readability" value={scores.readability || 0} />
+                  <ScoreBar label="Completeness" value={scores.completeness || 0} />
+                </div>
               </div>
 
-              <p className="text-sm text-zinc-400 mb-5">
-                {selected.description}
-              </p>
-
-              {/* Skills */}
-              <div className="mb-5">
-                <div className="label mb-2">Matched Skills</div>
+              <div className="card p-5">
+                <div className="mb-2 text-zinc-400">Skills</div>
                 <div className="flex flex-wrap gap-1.5">
-                  {(selected.matched_skills || []).map(s => (
+                  {(parsed.skills || []).map(s => (
                     <span key={s} className="badge-green">{s}</span>
                   ))}
                 </div>
               </div>
 
-              <div className="mb-5">
-                <div className="label mb-2">Missing Skills</div>
-                <div className="flex flex-wrap gap-1.5">
-                  {(selected.gap_skills || []).map(s => (
-                    <span key={s} className="badge-red">{s}</span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-3">
-                <a
-                  href={selected.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="btn-primary flex items-center gap-2"
+              {(r.matched_jobs || []).length > 0 && (
+                <button
+                  className="btn-primary flex justify-between items-center px-4 py-3"
+                  onClick={() => navigate('/jobs')}
                 >
-                  <ExternalLink size={14} /> Apply
-                </a>
-
-                <button className="btn-ghost flex items-center gap-2">
-                  <BookOpen size={14} /> Cover Letter
+                  <span>View {r.matched_jobs.length} jobs</span>
+                  <ChevronRight size={16} />
                 </button>
-              </div>
-
-            </div>
+              )}
+            </>
           )}
         </div>
-      )}
+
+        {/* Main */}
+        <div className="card p-6">
+          {!r ? (
+            <div className="text-center text-zinc-400">
+              Upload resume to start
+            </div>
+          ) : (
+            <>
+              <div className="flex gap-4 mb-4">
+                {TABS.map((t, i) => (
+                  <button
+                    key={t}
+                    onClick={() => setTab(i)}
+                    className={tab === i ? 'text-white' : 'text-zinc-500'}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+
+              {tab === 0 && (
+                <div className="flex flex-col gap-3">
+                  {(r.suggestions || []).map((s, i) => (
+                    <SuggestionCard key={i} {...s} />
+                  ))}
+                </div>
+              )}
+
+              {tab === 1 && (
+                <div>
+                  <div className="text-white">{parsed.name}</div>
+                  <div className="text-zinc-400 text-sm">{parsed.email}</div>
+                </div>
+              )}
+
+              {tab === 2 && (
+                <div className="flex flex-col gap-2">
+                  {skillGaps.map(s => (
+                    <div key={s.skill}>
+                      {s.skill} - {s.pct}%
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+      </div>
     </div>
   )
 }
