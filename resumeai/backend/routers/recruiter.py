@@ -1,11 +1,10 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from ml.resume_engine import parse_resume, score_ats, match_jobs_to_resume
 from utils.job_store import get_all_jobs
 from db import SessionLocal
 from models import Candidate
-import uuid
 
 router = APIRouter()
 
@@ -17,8 +16,21 @@ class CandidateSubmit(BaseModel):
     email: str
 
 
+# ---------------- RESPONSE MODEL (FIX) ----------------
+class CandidateOut(BaseModel):
+    id: Optional[int]
+    name: str
+    email: str
+    job_id: str
+    ats_score: float
+    match_score: float
+
+    class Config:
+        orm_mode = True
+
+
 # ---------------- SUBMIT ----------------
-@router.post("/submit")
+@router.post("/submit", response_model=CandidateOut)
 def submit_candidate(data: CandidateSubmit):
     db = SessionLocal()
 
@@ -30,12 +42,12 @@ def submit_candidate(data: CandidateSubmit):
     target_match = next((j for j in matched if j["id"] == data.job_id), None)
 
     candidate = Candidate(
-    name=data.name,
-    email=data.email,
-    job_id=data.job_id,
-    ats_score=scores["overall"],
-    match_score=target_match["match_score"] if target_match else 0,
-)
+        name=data.name,
+        email=data.email,
+        job_id=data.job_id,
+        ats_score=scores["overall"],
+        match_score=target_match["match_score"] if target_match else 0,
+    )
 
     db.add(candidate)
     db.commit()
@@ -69,8 +81,8 @@ def dashboard():
     }
 
 
-# ---------------- LIST CANDIDATES ----------------
-@router.get("/candidates")
+# ---------------- LIST CANDIDATES (FIX) ----------------
+@router.get("/candidates", response_model=List[CandidateOut])
 def list_candidates(job_id: Optional[str] = None, min_ats: int = 0):
     db = SessionLocal()
     query = db.query(Candidate)
