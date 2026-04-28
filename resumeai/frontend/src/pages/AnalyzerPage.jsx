@@ -1,223 +1,182 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Briefcase, ChevronRight } from 'lucide-react'
-import UploadZone from '../components/UploadZone'
-import AtsRing from '../components/AtsRing'
-import ScoreBar from '../components/ScoreBar'
-import SuggestionCard from '../components/SuggestionCard'
-import { uploadResume } from '../utils/api'
+import { useState, useEffect } from 'react'
+import { Search, SlidersHorizontal, ExternalLink, BookOpen } from 'lucide-react'
+import JobCard from '../components/JobCard'
+import { getJobs } from '../utils/api'
 
-const DEMO = {
-  parsed: {
-    name: 'Alex Chen',
-    email: 'alex.chen@email.com',
-    github: 'github.com/alexchen',
-    skills: ['python','react','sql','docker','aws','node.js','postgresql','redis'],
-    sections: ['summary','experience','education','skills'],
-    action_verb_count: 6,
-    quantified_bullets: 2,
-    word_count: 620,
-  },
-  ats_scores: {
-    overall: 75,
-    keywords: 82,
-    format: 90,
-    skills_match: 68,
-    readability: 55,
-    completeness: 78
-  },
-  suggestions: [
-    { type: 'critical', title: 'Quantify your impact', body: 'Add metrics like 40% improvement, 2M users etc.' }
-  ],
-  matched_jobs: []
-}
+export default function JobsPage() {
+  const [jobs, setJobs] = useState([])
+  const [selected, setSelected] = useState(null)
+  const [search, setSearch] = useState('')
+  const [minMatch, setMinMatch] = useState(0)
+  const [loading, setLoading] = useState(true)
 
-const TABS = ['Suggestions', 'Parsed Info', 'Skill Gaps']
+  useEffect(() => {
+    async function fetchJobs() {
+      try {
+        // 🔥 get resume text from localStorage
+        const resumeText = localStorage.getItem('resume_text') || ''
 
-const SKILL_GAP_DATA = [
-  { skill: 'Kubernetes', pct: 78, type: 'missing' },
-  { skill: 'Kafka', pct: 64, type: 'missing' },
-  { skill: 'Apache Spark', pct: 58, type: 'missing' },
-  { skill: 'Terraform', pct: 52, type: 'learning' },
-  { skill: 'TypeScript', pct: 48, type: 'learning' },
-  { skill: 'GraphQL', pct: 41, type: 'have' },
-  { skill: 'gRPC', pct: 35, type: 'have' },
-]
+        const res = await getJobs({
+          role: 'developer',
+          location: 'india',
+          resume: resumeText
+        })
 
-// 🔥 SAFE NORMALIZER (IMPORTANT FIX)
-function normalizeResult(data) {
-  if (!data) return DEMO
+        // ✅ SAFE PARSE (no more filter/forEach errors)
+        const data = res?.data
 
-  const parsed = data.parsed || {}
+        const safeJobs = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.jobs)
+          ? data.jobs
+          : []
 
-  return {
-    ...data,
+        setJobs(safeJobs)
+        setSelected(safeJobs[0] || null)
 
-    parsed: {
-      ...parsed,
-      skills: Array.isArray(parsed.skills)
-        ? parsed.skills
-        : typeof parsed.skills === 'string'
-          ? parsed.skills.split(',').map(s => s.trim())
-          : [],
-      sections: Array.isArray(parsed.sections) ? parsed.sections : [],
-    },
-
-    ats_scores: data.ats_scores || {},
-
-    suggestions: Array.isArray(data.suggestions)
-      ? data.suggestions
-      : [],
-
-    matched_jobs: Array.isArray(data.matched_jobs)
-      ? data.matched_jobs
-      : []
-  }
-}
-
-export default function AnalyzerPage() {
-  const [file, setFile] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState(null)
-  const [tab, setTab] = useState(0)
-  const [error, setError] = useState('')
-  const navigate = useNavigate()
-
-  async function handleFile(f) {
-    setFile(f)
-    setLoading(true)
-    setError('')
-
-    try {
-      const { data } = await uploadResume(f)
-
-      // 🔥 IMPORTANT FIX HERE
-      setResult(normalizeResult(data))
-
-    } catch (e) {
-      setResult(DEMO)
-    } finally {
-      setLoading(false)
+      } catch (err) {
+        console.error("Jobs fetch error:", err)
+        setJobs([])
+        setSelected(null)
+      } finally {
+        setLoading(false)
+      }
     }
-  }
 
-  const r = result
-  const scores = r?.ats_scores || {}
-  const parsed = r?.parsed || {}
+    fetchJobs()
+  }, [])
+
+  const safeJobs = Array.isArray(jobs) ? jobs : []
+
+  const filtered = safeJobs
+    .filter(j =>
+      !search ||
+      j.title?.toLowerCase().includes(search.toLowerCase()) ||
+      j.company?.toLowerCase().includes(search.toLowerCase())
+    )
+    .filter(j => (j.match_score || 0) >= minMatch)
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
+      
+      <h1 className="text-2xl font-semibold text-white mb-4">Job Matches</h1>
 
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-white mb-1">
-          Resume Analyzer
-        </h1>
-        <p className="text-zinc-500 text-sm">
-          Upload your resume to get ATS score and suggestions.
-        </p>
+      {/* Filters */}
+      <div className="flex items-center gap-3 mb-6">
+        <div className="relative flex-1">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+          <input
+            className="input pl-9"
+            placeholder="Search jobs or companies…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <SlidersHorizontal size={14} className="text-zinc-500" />
+          <span className="text-xs text-zinc-500">Min match:</span>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            step="5"
+            value={minMatch}
+            onChange={e => setMinMatch(+e.target.value)}
+          />
+          <span className="text-xs text-zinc-400 w-8">{minMatch}%</span>
+        </div>
       </div>
 
-      <div className="grid lg:grid-cols-[320px_1fr] gap-6">
+      {/* Loading */}
+      {loading && (
+        <div className="text-zinc-400 text-sm">Loading jobs...</div>
+      )}
 
-        {/* LEFT */}
-        <div className="flex flex-col gap-5">
-          <UploadZone onFile={handleFile} loading={loading} fileName={file?.name} />
+      {/* Main */}
+      {!loading && (
+        <div className="grid lg:grid-cols-[320px_1fr] gap-6">
 
-          {r && (
-            <>
-              <div className="card p-5">
-                <div className="label mb-4">ATS Score</div>
+          {/* LEFT LIST */}
+          <div className="flex flex-col gap-3 max-h-[calc(100vh-200px)] overflow-y-auto pr-1">
+            {filtered.map(job => (
+              <JobCard
+                key={job.id}
+                job={job}
+                selected={selected?.id === job.id}
+                onClick={() => setSelected(job)}
+              />
+            ))}
 
-                <div className="flex justify-center mb-5">
-                  <AtsRing score={scores.overall || 0} size={120} />
+            {filtered.length === 0 && (
+              <div className="text-center text-zinc-500 py-10 text-sm">
+                No jobs match your filters.
+              </div>
+            )}
+          </div>
+
+          {/* RIGHT DETAIL */}
+          {selected && (
+            <div className="card p-6 sticky top-20 h-fit">
+
+              <div className="flex justify-between mb-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-white">
+                    {selected.title}
+                  </h2>
+                  <p className="text-sm text-zinc-400">
+                    {selected.company} · {selected.location}
+                  </p>
                 </div>
 
-                <div className="flex flex-col gap-3">
-                  <ScoreBar label="Keywords" value={scores.keywords || 0} />
-                  <ScoreBar label="Format" value={scores.format || 0} />
-                  <ScoreBar label="Skills match" value={scores.skills_match || 0} />
-                  <ScoreBar label="Readability" value={scores.readability || 0} />
-                  <ScoreBar label="Completeness" value={scores.completeness || 0} />
-                </div>
+                <span className="badge-green">
+                  {Math.round(selected.match_score || 0)}%
+                </span>
               </div>
 
-              <div className="card p-5">
-                <div className="label mb-3">Detected Skills</div>
+              <p className="text-sm text-zinc-400 mb-5">
+                {selected.description}
+              </p>
+
+              {/* Skills */}
+              <div className="mb-5">
+                <div className="label mb-2">Matched Skills</div>
                 <div className="flex flex-wrap gap-1.5">
-                  {(parsed.skills || []).map(s => (
+                  {(selected.matched_skills || []).map(s => (
                     <span key={s} className="badge-green">{s}</span>
                   ))}
                 </div>
               </div>
 
-              {(r.matched_jobs || []).length > 0 && (
-                <button
-                  className="btn-primary flex items-center justify-between px-4 py-3"
-                  onClick={() => navigate('/jobs')}
+              <div className="mb-5">
+                <div className="label mb-2">Missing Skills</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {(selected.gap_skills || []).map(s => (
+                    <span key={s} className="badge-red">{s}</span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                <a
+                  href={selected.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-primary flex items-center gap-2"
                 >
-                  <span>View {r.matched_jobs.length} job matches</span>
-                  <ChevronRight size={16} />
+                  <ExternalLink size={14} /> Apply
+                </a>
+
+                <button className="btn-ghost flex items-center gap-2">
+                  <BookOpen size={14} /> Cover Letter
                 </button>
-              )}
-            </>
-          )}
-        </div>
+              </div>
 
-        {/* RIGHT */}
-        <div className="card overflow-hidden">
-
-          {!r ? (
-            <div className="flex flex-col items-center justify-center h-80 text-center px-8">
-              <Briefcase size={40} className="text-zinc-700 mb-4" />
-              <p className="text-zinc-400 font-medium mb-1">
-                Upload your resume to get started
-              </p>
             </div>
-          ) : (
-            <>
-              <div className="flex border-b border-zinc-800">
-                {TABS.map((t, i) => (
-                  <button
-                    key={t}
-                    onClick={() => setTab(i)}
-                    className={`px-5 py-3 text-sm font-medium ${
-                      tab === i ? 'text-white' : 'text-zinc-500'
-                    }`}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
-
-              <div className="p-6">
-
-                {tab === 0 && (
-                  <div className="flex flex-col gap-3">
-                    {(r.suggestions || []).map((s, i) => (
-                      <SuggestionCard key={i} {...s} />
-                    ))}
-                  </div>
-                )}
-
-                {tab === 1 && (
-                  <div className="text-white">
-                    <div className="font-semibold">{parsed.name}</div>
-                    <div className="text-sm text-zinc-400">{parsed.email}</div>
-                  </div>
-                )}
-
-                {tab === 2 && (
-                  <div className="text-zinc-400 text-sm">
-                    Skill gap section loaded safely.
-                  </div>
-                )}
-
-              </div>
-            </>
           )}
         </div>
-
-      </div>
+      )}
     </div>
   )
 }

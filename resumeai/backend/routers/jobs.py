@@ -8,19 +8,17 @@ router = APIRouter()
 def list_jobs(
     role: Optional[str] = Query("developer"),
     location: Optional[str] = Query("india"),
+    resume: Optional[str] = Query(""),  # 🔥 NEW
 ):
-    return get_all_jobs(role, location)
-
-
-@router.get("/search")
-def search(q: str = Query(...)):
-    return get_all_jobs(q)
+    return get_all_jobs(role, location, resume)
 
 
 @router.get("/{job_id}")
 def get_job(job_id: str):
     jobs = get_all_jobs()
+
     for job in jobs:
         if str(job["id"]) == job_id:
             return job
+
     return {"error": "Job not found"}
