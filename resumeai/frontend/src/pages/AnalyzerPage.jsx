@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Briefcase, ChevronRight } from 'lucide-react'
 import UploadZone from '../components/UploadZone'
@@ -13,9 +13,13 @@ function getSkillGaps(resumeSkills = [], jobs = []) {
   const safeJobs = Array.isArray(jobs) ? jobs : []
   const freq = {}
 
+  const keywords = [
+    'react','node','aws','docker','kubernetes',
+    'sql','python','javascript','typescript','mongodb','express'
+  ]
+
   safeJobs.forEach(job => {
-    const text = job.description?.toLowerCase() || ''
-    const keywords = ['react','node','aws','docker','kubernetes','sql','python']
+    const text = (job.description || '').toLowerCase()
 
     keywords.forEach(k => {
       if (text.includes(k)) {
@@ -24,10 +28,10 @@ function getSkillGaps(resumeSkills = [], jobs = []) {
     })
   })
 
-  return Object.entries(freq).map(([skill, count]) => ({
+  return keywords.map(skill => ({
     skill,
-    pct: Math.min(100, count * 10),
-    type: resumeSkills?.includes(skill) ? 'have' : 'missing'
+    pct: freq[skill] ? Math.min(100, freq[skill] * 10) : 10,
+    type: resumeSkills.includes(skill) ? 'have' : 'missing'
   }))
 }
 
@@ -39,17 +43,10 @@ export default function AnalyzerPage() {
   const [error, setError] = useState('')
   const navigate = useNavigate()
 
-  useEffect(() => {
-    const saved = localStorage.getItem('resume_result')
-    if (saved) {
-      const parsed = JSON.parse(saved)
-      parsed.matched_jobs = Array.isArray(parsed.matched_jobs) ? parsed.matched_jobs : []
-      setResult(parsed)
-    }
-  }, [])
-
   async function handleFile(f) {
     setFile(f)
+    setResult(null) // 🔥 clear old UI
+    localStorage.removeItem('resume_result') // 🔥 clear cache
     setLoading(true)
     setError('')
 
@@ -88,7 +85,7 @@ export default function AnalyzerPage() {
   const r = result
   const scores = r?.ats_scores || {}
   const parsed = r?.parsed || {}
-  const skillGaps = getSkillGaps(parsed.skills, r?.matched_jobs)
+  const skillGaps = getSkillGaps(parsed.skills || [], r?.matched_jobs || [])
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
@@ -197,6 +194,7 @@ export default function AnalyzerPage() {
 
               <div className="p-6">
 
+                {/* Suggestions */}
                 {tab === 0 && (
                   <div className="flex flex-col gap-3">
                     {(r.suggestions || []).map((s, i) => (
@@ -205,6 +203,7 @@ export default function AnalyzerPage() {
                   </div>
                 )}
 
+                {/* Parsed Info */}
                 {tab === 1 && (
                   <div>
                     <div className="text-white font-medium">{parsed.name}</div>
@@ -212,14 +211,23 @@ export default function AnalyzerPage() {
                   </div>
                 )}
 
+                {/* Skill Gaps */}
                 {tab === 2 && (
                   <div className="flex flex-col gap-3">
-                    {skillGaps.map(s => (
-                      <div key={s.skill} className="flex justify-between text-sm">
-                        <span>{s.skill}</span>
-                        <span className="text-zinc-400">{s.pct}%</span>
+                    {skillGaps.length === 0 ? (
+                      <div className="text-zinc-500 text-sm">
+                        No skill gaps found
                       </div>
-                    ))}
+                    ) : (
+                      skillGaps.map(s => (
+                        <div key={s.skill} className="flex justify-between text-sm">
+                          <span className={s.type === 'missing' ? 'text-red-400' : 'text-green-400'}>
+                            {s.skill}
+                          </span>
+                          <span className="text-zinc-400">{s.pct}%</span>
+                        </div>
+                      ))
+                    )}
                   </div>
                 )}
 
