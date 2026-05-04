@@ -15,7 +15,8 @@ function getSkillGaps(resumeSkills = [], jobs = []) {
 
   const keywords = [
     'react','node','aws','docker','kubernetes',
-    'sql','python','javascript','typescript','mongodb','express'
+    'sql','python','javascript','typescript',
+    'mongodb','express','unity','unreal','c++','opengl','shader'
   ]
 
   safeJobs.forEach(job => {
@@ -45,19 +46,25 @@ export default function AnalyzerPage() {
 
   async function handleFile(f) {
     setFile(f)
-    setResult(null) // 🔥 clear old UI
-    localStorage.removeItem('resume_result') // 🔥 clear cache
+    setResult(null)
     setLoading(true)
     setError('')
 
     try {
       const { data } = await uploadResume(f)
 
+      // 🔥 IMPORTANT: store resume text for JobsPage
+      const resumeText = data?.raw_text || ''
+      localStorage.setItem('resume_text', resumeText)
+
+      // use skills for role search
       const skills = data?.parsed?.skills?.join(' ') || 'developer'
 
+      // 🔥 IMPORTANT: send resume text to backend
       const jobsRes = await getJobs({
         role: skills,
-        location: 'india'
+        location: 'india',
+        resume: resumeText
       })
 
       const safeJobs = Array.isArray(jobsRes.data)
@@ -72,6 +79,8 @@ export default function AnalyzerPage() {
       }
 
       setResult(finalData)
+
+      // optional cache
       localStorage.setItem('resume_result', JSON.stringify(finalData))
 
     } catch (e) {
@@ -90,7 +99,6 @@ export default function AnalyzerPage() {
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
 
-      {/* HEADER */}
       <div className="mb-8">
         <h1 className="text-2xl font-semibold text-white mb-1">
           Resume Analyzer
@@ -119,7 +127,6 @@ export default function AnalyzerPage() {
 
           {r && (
             <>
-              {/* ATS CARD */}
               <div className="card p-5">
                 <div className="label mb-4">ATS Score</div>
 
@@ -136,7 +143,6 @@ export default function AnalyzerPage() {
                 </div>
               </div>
 
-              {/* SKILLS */}
               <div className="card p-5">
                 <div className="label mb-3">Detected Skills</div>
                 <div className="flex flex-wrap gap-1.5">
@@ -146,7 +152,6 @@ export default function AnalyzerPage() {
                 </div>
               </div>
 
-              {/* JOB BUTTON */}
               {(r.matched_jobs || []).length > 0 && (
                 <button
                   className="btn-primary flex items-center justify-between px-4 py-3"
@@ -160,7 +165,7 @@ export default function AnalyzerPage() {
           )}
         </div>
 
-        {/* MAIN PANEL */}
+        {/* MAIN */}
         <div className="card overflow-hidden">
 
           {!r ? (
@@ -175,7 +180,6 @@ export default function AnalyzerPage() {
             </div>
           ) : (
             <>
-              {/* TABS */}
               <div className="flex border-b border-zinc-800">
                 {TABS.map((t, i) => (
                   <button
@@ -194,7 +198,6 @@ export default function AnalyzerPage() {
 
               <div className="p-6">
 
-                {/* Suggestions */}
                 {tab === 0 && (
                   <div className="flex flex-col gap-3">
                     {(r.suggestions || []).map((s, i) => (
@@ -203,7 +206,6 @@ export default function AnalyzerPage() {
                   </div>
                 )}
 
-                {/* Parsed Info */}
                 {tab === 1 && (
                   <div>
                     <div className="text-white font-medium">{parsed.name}</div>
@@ -211,23 +213,16 @@ export default function AnalyzerPage() {
                   </div>
                 )}
 
-                {/* Skill Gaps */}
                 {tab === 2 && (
                   <div className="flex flex-col gap-3">
-                    {skillGaps.length === 0 ? (
-                      <div className="text-zinc-500 text-sm">
-                        No skill gaps found
+                    {skillGaps.map(s => (
+                      <div key={s.skill} className="flex justify-between text-sm">
+                        <span className={s.type === 'missing' ? 'text-red-400' : 'text-green-400'}>
+                          {s.skill}
+                        </span>
+                        <span className="text-zinc-400">{s.pct}%</span>
                       </div>
-                    ) : (
-                      skillGaps.map(s => (
-                        <div key={s.skill} className="flex justify-between text-sm">
-                          <span className={s.type === 'missing' ? 'text-red-400' : 'text-green-400'}>
-                            {s.skill}
-                          </span>
-                          <span className="text-zinc-400">{s.pct}%</span>
-                        </div>
-                      ))
-                    )}
+                    ))}
                   </div>
                 )}
 
