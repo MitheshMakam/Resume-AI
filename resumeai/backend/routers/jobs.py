@@ -1,15 +1,21 @@
 from fastapi import APIRouter, Query
 from typing import Optional, List
 from utils.job_store import get_all_jobs
-import re
 
 router = APIRouter()
 
-# 🔥 central skill list
+# 🔥 Expanded keywords (multi-domain support)
 KEYWORDS = [
+    # Web / Backend
     'react','node','aws','docker','kubernetes',
     'sql','python','javascript','typescript',
-    'mongodb','express','html','css','git'
+    'mongodb','express','html','css','git',
+
+    # Game Dev
+    'unity','unreal','c++','opengl','shader','game',
+
+    # General / Systems
+    'java','go','c#','redis','spark'
 ]
 
 
@@ -19,7 +25,7 @@ def extract_skills(text: str) -> List[str]:
 
 
 def calculate_match_data(resume_text: str, job_desc: str):
-    resume_skills = extract_skills(resume_text)
+    resume_skills = extract_skills(resume_text) or ["general"]
     job_skills = extract_skills(job_desc)
 
     if not job_skills:
@@ -30,7 +36,7 @@ def calculate_match_data(resume_text: str, job_desc: str):
 
     score = int((len(matched) / len(job_skills)) * 100)
 
-    # minimum baseline so UI not dead
+    # minimum baseline
     score = max(score, 10)
 
     return score, matched, missing
@@ -53,5 +59,8 @@ def list_jobs(
         job["match_score"] = score
         job["matched_skills"] = matched
         job["gap_skills"] = missing
+
+    # 🔥 Sort best matches first
+    jobs.sort(key=lambda x: x["match_score"], reverse=True)
 
     return jobs
