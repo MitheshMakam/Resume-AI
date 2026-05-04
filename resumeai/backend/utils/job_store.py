@@ -1,19 +1,10 @@
 import requests
 import os
-import re
 
 APP_ID = os.getenv("ADZUNA_APP_ID")
 APP_KEY = os.getenv("ADZUNA_APP_KEY")
 
 BASE_URL = "https://api.adzuna.com/v1/api/jobs"
-
-# 🔥 simple skill list
-SKILLS = ["python", "react", "node", "aws", "docker", "kubernetes", "sql"]
-
-def extract_skills(text):
-    keywords = ['react','node','aws','docker','kubernetes','sql','python']
-    text = (text or "").lower()
-    return [k for k in keywords if k in text]
 
 
 def get_all_jobs(role="developer", location="india"):
@@ -27,14 +18,16 @@ def get_all_jobs(role="developer", location="india"):
         "results_per_page": 20,
     }
 
-    res = requests.get(url, params=params)
-    data = res.json()
+    try:
+        res = requests.get(url, params=params)
+        data = res.json()
+    except Exception as e:
+        print("Job API error:", e)
+        return []
 
     jobs = []
 
     for job in data.get("results", []):
-        skills = extract_skills(job.get("description"))
-
         jobs.append({
             "id": job.get("id"),
             "title": job.get("title"),
@@ -43,10 +36,12 @@ def get_all_jobs(role="developer", location="india"):
             "description": job.get("description"),
             "url": job.get("redirect_url"),
 
-            # ✅ ADD THESE
-            "match_score": len(skills) * 15,  # simple scoring
-            "matched_skills": skills,
+            # ❌ REMOVE FAKE LOGIC
+            # these will be filled in jobs.py
+            "match_score": 0,
+            "matched_skills": [],
             "gap_skills": [],
+
             "salary": "Not specified",
             "posted": "Recently"
         })
